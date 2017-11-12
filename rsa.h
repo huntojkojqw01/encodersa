@@ -3,9 +3,25 @@ Tham khảo sách "Giáo trình cơ sở an toàn thông tin" thầy Nguyễn Kh
 */
 #ifndef _RSA_H
 #define _RSA_H
+#define BYTE_LEN 8
+#define BUFFER_LEN 32
+#define MAX_VAL 2147483647
+
+/*
+Việc mã hóa RSA thực hiện trên khối bit chứ không phải theo byte nên ta phải xây dựng 2 bộ đệm tương ứng cho 2 thao tác:
++ Đọc từng byte từ file nguồn lưu vào bộ đệm nguồn, khi nào đủ số bit của khối thì lấy ra để mã hóa rồi đưa vào bộ đệm đích,
++ Mỗi khi bộ đệm đích có đủ một byte dữ liệu trở lên thì sẽ ghi byte đó ra file đích.
+*/
+typedef struct{
+	unsigned int data;// chứa các bit
+	int pos;// đánh dấu đầu của buffer
+}buffer;
+buffer sbuff,dbuff;//sbuff là buffer của file nguồn,dbuff là buffer của file đích.
+int num_of_bit;// số lượng bit của mỗi khối sẽ đem đi mã hóa bằng RSA.
+FILE *sf,*df;
 
 typedef struct{
-	unsigned int p,q,n,m,e,d;
+	unsigned int p,q,n,m,e,d;// các tham số trong thuật toán RSA
 }rsa_params;
 /*
 Thuật toán gcd mở rộng, áp dụng tìm nghịch đảo của n1 theo modulo n2,
@@ -20,5 +36,18 @@ Bước xây dựng các tham số p,q,n,e,m,d cho thuật toán RSA.
 Chi tiết tham khảo trang 73.
 */
 void init();
-int luy_thua_cao(int x,int y,int mod);
+//----------
+int luy_thua_cao(int x,int y,int mod);// tính x^y modul n 
+//------------------------------------
+int rsa_encode(int x,rsa_params _rsa);// mã hóa một số x thành y=x^e modul n.
+//------------------------------------
+int rsa_decode(int y,rsa_params _rsa);// giải mã một số y thành x=y^d modul n.
+//------------------------------------
+void ma_hoa(rsa_params _rsa,char* file_name);// mã hóa một file theo thuật RSA.
+void giai_ma(rsa_params _rsa,char* file_name);// giải mã một file đã dc mã hóa RSA.
+//--------------------------------------------
+int import_to_src_buffer();// hàm này thực hiện đọc một byte dữ liệu rồi chèn nó vào sau src buffer-data.
+unsigned int export_from_src_buffer();// hàm này trả về (num_of_bit) đầu tiên của file f.
+int import_to_des_buffer();// hàm này thực hiện ghi một (num_of_bit) bit dữ liệu từ file vào des buffer-data.
+void export_from_des_buffer();
 #endif //_RSA_H
