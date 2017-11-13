@@ -6,6 +6,9 @@ Tham khảo sách "Giáo trình cơ sở an toàn thông tin" thầy Nguyễn Kh
 #define BYTE_LEN 8
 #define BUFFER_LEN 32
 #define MAX_VAL 2147483647
+#define SUCCESS 1
+#define FAILED 0
+#define FF 511// 8 bit 1 lien tiep
 
 /*
 Việc mã hóa RSA thực hiện trên khối bit chứ không phải theo byte nên ta phải xây dựng 2 bộ đệm tương ứng cho 2 thao tác:
@@ -19,6 +22,7 @@ typedef struct{
 buffer sbuff,dbuff;//sbuff là buffer của file nguồn,dbuff là buffer của file đích.
 int num_of_bit;// số lượng bit của mỗi khối sẽ đem đi mã hóa bằng RSA.
 FILE *sf,*df;
+unsigned int plain,code;
 
 typedef struct{
 	unsigned int p,q,n,m,e,d,u;// các tham số trong thuật toán RSA

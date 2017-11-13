@@ -64,15 +64,70 @@ int rsa_encode(int x,rsa_params _rsa){
 int rsa_decode(int y,rsa_params _rsa){
 	return luy_thua_cao(y,_rsa.d,_rsa.n);
 }
+int itsb(){// hàm này thực hiện đọc dữ liệu từ file rồi chèn nó vào sau src buffer-data.
+	char c;
+	while(sbuff.head<num_of_bit && sbuff.head+BYTE_LEN < BUFFER_LEN && !feof(sf)){		
+		if(fread(&c,sizeof(char),1,sf)>0){
+			sbuff.head+=sizeof(char)<<3;
+			sbuff.data=(sbuff.data<<BYTE_LEN)+c;			
+		}
+		else{
+			if(sbuff.head==0){
+				puts("File het buff het, vua dep.");
+				return FAILED;
+			}
+			else{// nếu hết file mà sbuff vẫn còn data thì ta tự chèn thêm các bit 0 vào data cho đủ số bit.
+				sbuff.data= sbuff.data<<(num_of_bit-sbuff.head);
+				sbuff.head= num_of_bit;
+				return SUCCESS;
+			}			
+		}
+	}
+	return SUCCESS;
+}
+unsigned int efsb(){// hàm này trả về (num_of_bit) đầu tiên của file f.
+	unsigned int result, tmp=(2<<num_of_bit)-1;// tạo ra một số tmp gồm (num_of_bit) các bit 1
+	if(sbuff.head>=num_of_bit){
+		result= sbuff.data>>(sbuff.head= sbuff.head-num_of_bit);// result có giá trị bằng (num_of_bit) đầu tiên của data.	
+		sbuff.data &=~(tmp<<sbuff.head);// xóa (num_of_bit) đầu tiên của data về giá trị 0.			
+		return result;
+	}else return MAX_VAL;
+}
+int itdb(){// hàm này thực hiện ghi một (num_of_bit) bit dữ liệu từ src vào des buffer-data.
+	if(dbuff.head+num_of_bit<BUFFER_LEN){
+		dbuff.head+=num_of_bit;
+		dbuff.data=(dbuff.data<<num_of_bit)+code;			
+		return SUCCESS;
+	}
+	else{			
+		puts("Tran des buff!");
+		return FAILED;
+	}	
+}
+void efdb(){	
+	char c;	
+	while(dbuff.head>=BYTE_LEN){
+		c= dbuff.data>> (dbuff.head= dbuff.head-BYTE_LEN);// c có giá trị bằng (num_of_bit) đầu tiên của data.	
+		fwrite(&c,sizeof(char),1,df);		
+		dbuff.data &=~(FF<<dbuff.head);// xóa 8 bit đầu tiên của data về giá trị 0.				
+	}	
+}
 void ma_hoa(rsa_params _rsa,char* fname){
 	memset(&sbuff,0,sizeof(buffer));
-	memset(&dbuff,0,sizeof(buffer));
-	
+	memset(&dbuff,0,sizeof(buffer));	
 	printf("mỗi lần mã hóa %d bit nhé\n",num_of_bit= _rsa.u);	
 	sf=fopen(fname,"rb");
-	df=fopen("encode","wb");	
-	while(!feof(sf))
-		export_from_des_buffer();			
+	df=fopen("encode","wb");
+	
+	while(!feof(sf)){
+		if(itsb()==FAILED) break;
+		while((plain=efsb())<MAX_VAL){
+			code=plain;//thuc hien viec ma hoa
+			if(itdb()==FAILED) break;
+			efdb();
+		}
+		//export_from_des_buffer();			
+	}
 	fclose(sf);
 	fclose(df);
 }
@@ -95,6 +150,7 @@ void giai_ma(rsa_params _rsa,char* fname){
 extern buffer sbuff,dbuff;//sbuff là buffer của file nguồn,dbuff là buffer của file đích.
 extern int num_of_bit;// số lượng bit của mỗi khối sẽ đem đi mã hóa bằng RSA.
 extern FILE *sf,*df;
+extern unsigned int plain,code;
 int import_to_src_buffer(){// hàm này thực hiện đọc một byte dữ liệu rồi chèn nó vào sau src buffer-data.
 	char c;
 	if(sbuff.head+BYTE_LEN < BUFFER_LEN && !feof(sf)){		

@@ -4,7 +4,7 @@
 int main(int argc,char* argv[]){	
 	rsa_params _rsa;
 	int x,y;	
-	if(argc>=2){
+	if(argc>=2){		
 		init(&_rsa);
 		if(argc>=3){
 			x=atoi(argv[2]);
