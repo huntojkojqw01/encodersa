@@ -14,14 +14,14 @@ Việc mã hóa RSA thực hiện trên khối bit chứ không phải theo byte
 */
 typedef struct{
 	unsigned int data;// chứa các bit
-	int pos;// đánh dấu đầu của buffer
+	int head;// đánh dấu đầu của buffer
 }buffer;
 buffer sbuff,dbuff;//sbuff là buffer của file nguồn,dbuff là buffer của file đích.
 int num_of_bit;// số lượng bit của mỗi khối sẽ đem đi mã hóa bằng RSA.
 FILE *sf,*df;
 
 typedef struct{
-	unsigned int p,q,n,m,e,d;// các tham số trong thuật toán RSA
+	unsigned int p,q,n,m,e,d,u;// các tham số trong thuật toán RSA
 }rsa_params;
 /*
 Thuật toán gcd mở rộng, áp dụng tìm nghịch đảo của n1 theo modulo n2,

@@ -53,7 +53,10 @@ void init(rsa_params *x){
 	int *tmp;
 	tmp=gcd_mo_rong(x->e,x->m);
 	if(tmp[1]<0) x->d=tmp[1]+x->m;// nếu d bị âm ta phải + với m để thành dương.
-	else x->d=tmp[1];	
+	else x->d=tmp[1];
+	//tính số bit mỗi lần mã hóa, phải thóa 2^u < n-1.
+	int u=0;
+	while(2<<u++ < x->n-1);	x->u=u-1;
 }
 int rsa_encode(int x,rsa_params _rsa){
 	return luy_thua_cao(x,_rsa.e,_rsa.n);
@@ -64,9 +67,8 @@ int rsa_decode(int y,rsa_params _rsa){
 void ma_hoa(rsa_params _rsa,char* fname){
 	memset(&sbuff,0,sizeof(buffer));
 	memset(&dbuff,0,sizeof(buffer));
-	int u=0;
-	while(2<<u++ < _rsa.n-1);//tính số bit mỗi lần mã hóa, phải thóa 2^u < n-1.
-	printf("mỗi lần mã hóa %d bit nhé\n",num_of_bit= u-1);	
+	
+	printf("mỗi lần mã hóa %d bit nhé\n",num_of_bit= _rsa.u);	
 	sf=fopen(fname,"rb");
 	df=fopen("encode","wb");	
 	while(!feof(sf))
@@ -95,9 +97,9 @@ extern int num_of_bit;// số lượng bit của mỗi khối sẽ đem đi mã 
 extern FILE *sf,*df;
 int import_to_src_buffer(){// hàm này thực hiện đọc một byte dữ liệu rồi chèn nó vào sau src buffer-data.
 	char c;
-	if(sbuff.pos+BYTE_LEN < BUFFER_LEN && !feof(sf)){		
+	if(sbuff.head+BYTE_LEN < BUFFER_LEN && !feof(sf)){		
 		if(fread(&c,sizeof(char),1,sf)>0){
-			sbuff.pos+=sizeof(char)<<3;
+			sbuff.head+=sizeof(char)<<3;
 			sbuff.data=(sbuff.data<<BYTE_LEN)+c;			
 			return 1;
 		}
@@ -109,24 +111,24 @@ int import_to_src_buffer(){// hàm này thực hiện đọc một byte dữ li�
 }
 unsigned int export_from_src_buffer(){// hàm này trả về (num_of_bit) đầu tiên của file f.
 	unsigned int result=MAX_VAL, tmp=(2<<num_of_bit)-1;// tạo ra một số tmp gồm (num_of_bit) các bit 1
-	while(sbuff.pos<num_of_bit){
+	while(sbuff.head<num_of_bit){
 		if(import_to_src_buffer(sf,sbuff)==0){	// nếu hết file thì ta tự chèn thêm các bit 0 vào data cho đủ số bit.	
-			if(sbuff.pos==0) break;	
-			sbuff.data= sbuff.data<<(num_of_bit-sbuff.pos);
-			sbuff.pos= num_of_bit;					
+			if(sbuff.head==0) break;	
+			sbuff.data= sbuff.data<<(num_of_bit-sbuff.head);
+			sbuff.head= num_of_bit;					
 		}
 	}
-	if(sbuff.pos>=num_of_bit){
-		result= sbuff.data>>(sbuff.pos= sbuff.pos-num_of_bit);// result có giá trị bằng (num_of_bit) đầu tiên của data.	
-		sbuff.data &=~(tmp<<sbuff.pos);// xóa (num_of_bit) đầu tiên của data về giá trị 0.			
+	if(sbuff.head>=num_of_bit){
+		result= sbuff.data>>(sbuff.head= sbuff.head-num_of_bit);// result có giá trị bằng (num_of_bit) đầu tiên của data.	
+		sbuff.data &=~(tmp<<sbuff.head);// xóa (num_of_bit) đầu tiên của data về giá trị 0.			
 	}	
 	return result;
 }
 int import_to_des_buffer(){// hàm này thực hiện ghi một (num_of_bit) bit dữ liệu từ file vào des buffer-data.
 	unsigned int result;
-	if(dbuff.pos+num_of_bit<BUFFER_LEN){
+	if(dbuff.head+num_of_bit<BUFFER_LEN){
 		if((result=export_from_src_buffer())<MAX_VAL){
-			dbuff.pos+=num_of_bit;
+			dbuff.head+=num_of_bit;
 			dbuff.data=(dbuff.data<<num_of_bit)+result;			
 			return 1;
 		}
@@ -139,12 +141,12 @@ int import_to_des_buffer(){// hàm này thực hiện ghi một (num_of_bit) bit
 void export_from_des_buffer(){
 	unsigned int tmp=(2<<BYTE_LEN)-1, result=MAX_VAL;
 	char c;
-	while(dbuff.pos<BYTE_LEN){			
+	while(dbuff.head<BYTE_LEN){			
 		if(import_to_des_buffer()==0)	break;		
 	}
-	if(dbuff.pos>=BYTE_LEN){
-		c= dbuff.data>> (dbuff.pos= dbuff.pos-BYTE_LEN);// c có giá trị bằng (num_of_bit) đầu tiên của data.	
+	if(dbuff.head>=BYTE_LEN){
+		c= dbuff.data>> (dbuff.head= dbuff.head-BYTE_LEN);// c có giá trị bằng (num_of_bit) đầu tiên của data.	
 		fwrite(&c,sizeof(char),1,df);		
-		dbuff.data &=~(tmp<<dbuff.pos);// xóa 8 bit đầu tiên của data về giá trị 0.				
+		dbuff.data &=~(tmp<<dbuff.head);// xóa 8 bit đầu tiên của data về giá trị 0.				
 	}	
 }
