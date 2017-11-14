@@ -4,8 +4,8 @@
 #include "rsa.h"
 #include "consant.h"
 #include "time.h"
-int luy_thua_cao(int x,int y,int mod){// tính x mũ y modul mod
-	int a,b,tmp;
+unsigned int luy_thua_cao(unsigned int x,unsigned int y,unsigned int mod){// tính x mũ y modul mod
+	unsigned int a,b,tmp;
 	if(y==0) return 1%mod;
 	else
 		if(y==1) return x%mod;
@@ -58,18 +58,24 @@ void init(rsa_params *x){
 	int u=0;
 	while(2<<u++ < x->n-1);	x->u=u-1;
 }
-int rsa_encode(int x,rsa_params _rsa){
+unsigned int rsa_encode(int x,rsa_params _rsa){
 	return luy_thua_cao(x,_rsa.e,_rsa.n);
 }
-int rsa_decode(int y,rsa_params _rsa){
+unsigned int rsa_decode(int y,rsa_params _rsa){
 	return luy_thua_cao(y,_rsa.d,_rsa.n);
 }
-void itsb(){// hàm này thực hiện đọc dữ liệu từ file rồi chèn nó vào sau src buffer-data.
-	char c;
+
+extern buffer sbuff,dbuff;//sbuff là buffer của file nguồn,dbuff là buffer của file đích.
+extern int num_of_bit;// số lượng bit của mỗi khối sẽ đem đi mã hóa bằng RSA.
+extern FILE *sf,*df;
+extern unsigned int plain,code;
+
+void src_buff_enqueue(){// hàm này thực hiện đọc dữ liệu từ file rồi chèn nó vào sau src buffer-data.
+	unsigned char c;
 	while(sbuff.head<num_of_bit && sbuff.head+BYTE_LEN < BUFFER_LEN && !feof(sf)){		
-		if(fread(&c,sizeof(char),1,sf)>0){
+		if(fread(&c,sizeof(unsigned char),1,sf)>0){
 			sbuff.head+=sizeof(char)<<3;
-			sbuff.data=(sbuff.data<<BYTE_LEN)+c;			
+			sbuff.data=(sbuff.data<<BYTE_LEN)|c;			
 		}
 		else{
 			puts("File het du lieu.");
@@ -77,7 +83,7 @@ void itsb(){// hàm này thực hiện đọc dữ liệu từ file rồi chèn 
 		}
 	}	
 }
-unsigned int efsb(){// hàm này trả về (num_of_bit) đầu tiên của file f.
+unsigned int src_buff_dequeue(){// hàm này trả về (num_of_bit) đầu tiên của file f.
 	unsigned int result, tmp=(2<<num_of_bit)-1;// tạo ra một số tmp gồm (num_of_bit) các bit 1
 	if(sbuff.head>=num_of_bit){
 		result= sbuff.data>>(sbuff.head= sbuff.head-num_of_bit);// result có giá trị bằng (num_of_bit) đầu tiên của data.	
@@ -85,122 +91,76 @@ unsigned int efsb(){// hàm này trả về (num_of_bit) đầu tiên của file
 		return result;
 	}else return MAX_VAL;
 }
-void itdb(){// hàm này thực hiện ghi một (num_of_bit) bit dữ liệu từ src vào des buffer-data.
+void des_buff_enqueue(unsigned int value){// hàm này thực hiện ghi một (num_of_bit) bit dữ liệu có giá trị value vào des buffer-data.
 	if(dbuff.head+num_of_bit<BUFFER_LEN){
 		dbuff.head+=num_of_bit;
-		dbuff.data=(dbuff.data<<num_of_bit)+code;		
+		dbuff.data=(dbuff.data<<num_of_bit)|value;		
 	}
 	else{			
 		puts("Tran des buff!");		
 	}	
 }
-void efdb(){	
-	char c;	
+void des_buff_dequeue(){	
+	unsigned char c;	
 	while(dbuff.head>=BYTE_LEN){
-		c= dbuff.data>> (dbuff.head= dbuff.head-BYTE_LEN);// c có giá trị bằng (num_of_bit) đầu tiên của data.	
-		fwrite(&c,sizeof(char),1,df);		
-		dbuff.data &=~(FF<<dbuff.head);// xóa 8 bit đầu tiên của data về giá trị 0.				
+		printf("Bd c= 0x%X(%d) ,dbuff co 0x%X\n",c,c,dbuff.data );	
+		c= dbuff.data>> (dbuff.head= dbuff.head-BYTE_LEN);// c có giá trị bằng (num_of_bit) đầu tiên của data.
+		printf("Sau c= 0x%X(%d) ,dbuff co 0x%X\n",c,c,dbuff.data );	
+		fwrite(&c,sizeof(unsigned char),1,df);		
+		dbuff.data &=~(FF<<dbuff.head);// xóa 8 bit đầu tiên của data về giá trị 0.	
+		printf("Ghi 0x%X(%d) ,dbuff con 0x%X\n",c,c,dbuff.data );			
 	}	
 }
-void vet(){//chuyen not cac bit con sot lai trong src buffer vao des buffer
-	dbuff.head+=sbuff.head;
-	dbuff.data=(dbuff.data<<sbuff.head)+sbuff.data;
-	sbuff.data>>=sbuff.head,sbuff.head=0;
+void quet_sach(){//chuyển nốt các bit còn sót trong src buffer vào des buffer
+	if(sbuff.head>0){
+		dbuff.head+=sbuff.head;
+		dbuff.data=(dbuff.data<<sbuff.head)|sbuff.data;
+		sbuff.data>>=sbuff.head,sbuff.head=0;
+		printf("Sau quet_sach: dbuff: 0x%X(%d)\n",dbuff.data,dbuff.data);
+	}
+	des_buff_dequeue();	
 }
 void ma_hoa(rsa_params _rsa,char* fname){
 	memset(&sbuff,0,sizeof(buffer));
 	memset(&dbuff,0,sizeof(buffer));	
-	printf("mỗi lần mã hóa %d bit nhé\n",num_of_bit= _rsa.u);	
+	num_of_bit=_rsa.u;	
 	sf=fopen(fname,"rb");
 	df=fopen("encode","wb");
-	
+	puts("Ma hoa:");
 	while(!feof(sf)){
-		itsb();
-		plain=efsb();
-		if(plain<MAX_VAL){
-			code=plain;//thuc hien viec ma hoa
-			itdb();		
+		src_buff_enqueue();
+		plain=src_buff_dequeue();
+		if(plain<MAX_VAL){					
+			code=rsa_encode(plain,_rsa);//thuc hien viec ma hoa
+			while(code>(2<<(num_of_bit-1))) code=rsa_encode(code,_rsa);//chong tran bit sau luy thua
+			printf("plain=0x%X(%d) -> code=0x%X(%d)\n",plain,plain,code,code);
+			des_buff_enqueue(code);		
 		}		
-		efdb();			
+		des_buff_dequeue();			
 	}
-	vet();
-	efdb();
-	
+	quet_sach();	
 	fclose(sf);
 	fclose(df);
 }
 void giai_ma(rsa_params _rsa,char* fname){
-	FILE *f1,*f2;
-	char plain,code;
-	f1=fopen(fname,"rb");
-	f2=fopen("decode","wb");
-	if(!f1||!f2) puts("IO error !!!");
-	while(!feof(f1)){
-		if(fread(&code,sizeof(char),1,f1)>0){
-			plain=rsa_decode(code,_rsa);
-			printf("%d->%d ",code,plain );
-			fwrite(&plain,sizeof(char),1,f2);
+	memset(&sbuff,0,sizeof(buffer));
+	memset(&dbuff,0,sizeof(buffer));	
+	num_of_bit=_rsa.u;	
+	sf=fopen(fname,"rb");
+	df=fopen("decode","wb");
+	puts("Giai ma:");
+	while(!feof(sf)){
+		src_buff_enqueue();
+		code=src_buff_dequeue();
+		if(code<MAX_VAL){			
+			plain=rsa_decode(code,_rsa);//thuc hien viec giai ma
+			while(plain>(2<<(num_of_bit-1))) plain=rsa_decode(plain,_rsa);//chong tran bit sau luy thua
+			printf("code=0x%X(%d) -> plain=0x%X(%d)\n",code,code,plain,plain);
+			des_buff_enqueue(plain);		
 		}		
-	}	
-	fclose(f1),fclose(f2);
-}
-
-extern buffer sbuff,dbuff;//sbuff là buffer của file nguồn,dbuff là buffer của file đích.
-extern int num_of_bit;// số lượng bit của mỗi khối sẽ đem đi mã hóa bằng RSA.
-extern FILE *sf,*df;
-extern unsigned int plain,code;
-int import_to_src_buffer(){// hàm này thực hiện đọc một byte dữ liệu rồi chèn nó vào sau src buffer-data.
-	char c;
-	if(sbuff.head+BYTE_LEN < BUFFER_LEN && !feof(sf)){		
-		if(fread(&c,sizeof(char),1,sf)>0){
-			sbuff.head+=sizeof(char)<<3;
-			sbuff.data=(sbuff.data<<BYTE_LEN)+c;			
-			return 1;
-		}
-		else{
-			puts("End of file!");
-			return 0;
-		}
+		des_buff_dequeue();			
 	}
-}
-unsigned int export_from_src_buffer(){// hàm này trả về (num_of_bit) đầu tiên của file f.
-	unsigned int result=MAX_VAL, tmp=(2<<num_of_bit)-1;// tạo ra một số tmp gồm (num_of_bit) các bit 1
-	while(sbuff.head<num_of_bit){
-		if(import_to_src_buffer(sf,sbuff)==0){	// nếu hết file thì ta tự chèn thêm các bit 0 vào data cho đủ số bit.	
-			if(sbuff.head==0) break;	
-			sbuff.data= sbuff.data<<(num_of_bit-sbuff.head);
-			sbuff.head= num_of_bit;					
-		}
-	}
-	if(sbuff.head>=num_of_bit){
-		result= sbuff.data>>(sbuff.head= sbuff.head-num_of_bit);// result có giá trị bằng (num_of_bit) đầu tiên của data.	
-		sbuff.data &=~(tmp<<sbuff.head);// xóa (num_of_bit) đầu tiên của data về giá trị 0.			
-	}	
-	return result;
-}
-int import_to_des_buffer(){// hàm này thực hiện ghi một (num_of_bit) bit dữ liệu từ file vào des buffer-data.
-	unsigned int result;
-	if(dbuff.head+num_of_bit<BUFFER_LEN){
-		if((result=export_from_src_buffer())<MAX_VAL){
-			dbuff.head+=num_of_bit;
-			dbuff.data=(dbuff.data<<num_of_bit)+result;			
-			return 1;
-		}
-		else{			
-			puts("Het sach du lieu!");
-			return 0;
-		}
-	}
-}
-void export_from_des_buffer(){
-	unsigned int tmp=(2<<BYTE_LEN)-1, result=MAX_VAL;
-	char c;
-	while(dbuff.head<BYTE_LEN){			
-		if(import_to_des_buffer()==0)	break;		
-	}
-	if(dbuff.head>=BYTE_LEN){
-		c= dbuff.data>> (dbuff.head= dbuff.head-BYTE_LEN);// c có giá trị bằng (num_of_bit) đầu tiên của data.	
-		fwrite(&c,sizeof(char),1,df);		
-		dbuff.data &=~(tmp<<dbuff.head);// xóa 8 bit đầu tiên của data về giá trị 0.				
-	}	
+	quet_sach();
+	fclose(sf);
+	fclose(df);
 }

@@ -41,17 +41,13 @@ Chi tiết tham khảo trang 73.
 */
 void init();
 //----------
-int luy_thua_cao(int x,int y,int mod);// tính x^y modul n 
+unsigned int luy_thua_cao(unsigned int x,unsigned int y,unsigned int mod);// tính x^y modul n 
 //------------------------------------
-int rsa_encode(int x,rsa_params _rsa);// mã hóa một số x thành y=x^e modul n.
+unsigned int rsa_encode(int x,rsa_params _rsa);// mã hóa một số x thành y=x^e modul n.
 //------------------------------------
-int rsa_decode(int y,rsa_params _rsa);// giải mã một số y thành x=y^d modul n.
+unsigned int rsa_decode(int y,rsa_params _rsa);// giải mã một số y thành x=y^d modul n.
 //------------------------------------
 void ma_hoa(rsa_params _rsa,char* file_name);// mã hóa một file theo thuật RSA.
 void giai_ma(rsa_params _rsa,char* file_name);// giải mã một file đã dc mã hóa RSA.
 //--------------------------------------------
-int import_to_src_buffer();// hàm này thực hiện đọc một byte dữ liệu rồi chèn nó vào sau src buffer-data.
-unsigned int export_from_src_buffer();// hàm này trả về (num_of_bit) đầu tiên của file f.
-int import_to_des_buffer();// hàm này thực hiện ghi một (num_of_bit) bit dữ liệu từ file vào des buffer-data.
-void export_from_des_buffer();
 #endif //_RSA_H
