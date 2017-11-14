@@ -102,21 +102,17 @@ void des_buff_enqueue(unsigned int value){// hàm này thực hiện ghi một (
 }
 void des_buff_dequeue(){	
 	unsigned char c;	
-	while(dbuff.head>=BYTE_LEN){
-		printf("Bd c= 0x%X(%d) ,dbuff co 0x%X\n",c,c,dbuff.data );	
-		c= dbuff.data>> (dbuff.head= dbuff.head-BYTE_LEN);// c có giá trị bằng (num_of_bit) đầu tiên của data.
-		printf("Sau c= 0x%X(%d) ,dbuff co 0x%X\n",c,c,dbuff.data );	
+	while(dbuff.head>=BYTE_LEN){		
+		c= dbuff.data>> (dbuff.head= dbuff.head-BYTE_LEN);// c có giá trị bằng (num_of_bit) đầu tiên của data.		
 		fwrite(&c,sizeof(unsigned char),1,df);		
-		dbuff.data &=~(FF<<dbuff.head);// xóa 8 bit đầu tiên của data về giá trị 0.	
-		printf("Ghi 0x%X(%d) ,dbuff con 0x%X\n",c,c,dbuff.data );			
+		dbuff.data &=~(FF<<dbuff.head);// xóa 8 bit đầu tiên của data về giá trị 0.				
 	}	
 }
 void quet_sach(){//chuyển nốt các bit còn sót trong src buffer vào des buffer
 	if(sbuff.head>0){
 		dbuff.head+=sbuff.head;
 		dbuff.data=(dbuff.data<<sbuff.head)|sbuff.data;
-		sbuff.data>>=sbuff.head,sbuff.head=0;
-		printf("Sau quet_sach: dbuff: 0x%X(%d)\n",dbuff.data,dbuff.data);
+		sbuff.data>>=sbuff.head,sbuff.head=0;		
 	}
 	des_buff_dequeue();	
 }
@@ -125,15 +121,13 @@ void ma_hoa(rsa_params _rsa,char* fname){
 	memset(&dbuff,0,sizeof(buffer));	
 	num_of_bit=_rsa.u;	
 	sf=fopen(fname,"rb");
-	df=fopen("encode","wb");
-	puts("Ma hoa:");
+	df=fopen("encode","wb");	
 	while(!feof(sf)){
 		src_buff_enqueue();
 		plain=src_buff_dequeue();
 		if(plain<MAX_VAL){					
 			code=rsa_encode(plain,_rsa);//thuc hien viec ma hoa
-			while(code>(2<<(num_of_bit-1))) code=rsa_encode(code,_rsa);//chong tran bit sau luy thua
-			printf("plain=0x%X(%d) -> code=0x%X(%d)\n",plain,plain,code,code);
+			while(code>(2<<(num_of_bit-1))) code=rsa_encode(code,_rsa);//chong tran bit sau luy thua			
 			des_buff_enqueue(code);		
 		}		
 		des_buff_dequeue();			
@@ -147,15 +141,13 @@ void giai_ma(rsa_params _rsa,char* fname){
 	memset(&dbuff,0,sizeof(buffer));	
 	num_of_bit=_rsa.u;	
 	sf=fopen(fname,"rb");
-	df=fopen("decode","wb");
-	puts("Giai ma:");
+	df=fopen("decode","wb");	
 	while(!feof(sf)){
 		src_buff_enqueue();
 		code=src_buff_dequeue();
 		if(code<MAX_VAL){			
 			plain=rsa_decode(code,_rsa);//thuc hien viec giai ma
-			while(plain>(2<<(num_of_bit-1))) plain=rsa_decode(plain,_rsa);//chong tran bit sau luy thua
-			printf("code=0x%X(%d) -> plain=0x%X(%d)\n",code,code,plain,plain);
+			while(plain>(2<<(num_of_bit-1))) plain=rsa_decode(plain,_rsa);//chong tran bit sau luy thua			
 			des_buff_enqueue(plain);		
 		}		
 		des_buff_dequeue();			
