@@ -64,7 +64,7 @@ int rsa_encode(int x,rsa_params _rsa){
 int rsa_decode(int y,rsa_params _rsa){
 	return luy_thua_cao(y,_rsa.d,_rsa.n);
 }
-int itsb(){// hàm này thực hiện đọc dữ liệu từ file rồi chèn nó vào sau src buffer-data.
+void itsb(){// hàm này thực hiện đọc dữ liệu từ file rồi chèn nó vào sau src buffer-data.
 	char c;
 	while(sbuff.head<num_of_bit && sbuff.head+BYTE_LEN < BUFFER_LEN && !feof(sf)){		
 		if(fread(&c,sizeof(char),1,sf)>0){
@@ -72,18 +72,10 @@ int itsb(){// hàm này thực hiện đọc dữ liệu từ file rồi chèn n
 			sbuff.data=(sbuff.data<<BYTE_LEN)+c;			
 		}
 		else{
-			if(sbuff.head==0){
-				puts("File het buff het, vua dep.");
-				return FAILED;
-			}
-			else{// nếu hết file mà sbuff vẫn còn data thì ta tự chèn thêm các bit 0 vào data cho đủ số bit.
-				sbuff.data= sbuff.data<<(num_of_bit-sbuff.head);
-				sbuff.head= num_of_bit;
-				return SUCCESS;
-			}			
+			puts("File het du lieu.");
+			break;				
 		}
-	}
-	return SUCCESS;
+	}	
 }
 unsigned int efsb(){// hàm này trả về (num_of_bit) đầu tiên của file f.
 	unsigned int result, tmp=(2<<num_of_bit)-1;// tạo ra một số tmp gồm (num_of_bit) các bit 1
@@ -93,15 +85,13 @@ unsigned int efsb(){// hàm này trả về (num_of_bit) đầu tiên của file
 		return result;
 	}else return MAX_VAL;
 }
-int itdb(){// hàm này thực hiện ghi một (num_of_bit) bit dữ liệu từ src vào des buffer-data.
+void itdb(){// hàm này thực hiện ghi một (num_of_bit) bit dữ liệu từ src vào des buffer-data.
 	if(dbuff.head+num_of_bit<BUFFER_LEN){
 		dbuff.head+=num_of_bit;
-		dbuff.data=(dbuff.data<<num_of_bit)+code;			
-		return SUCCESS;
+		dbuff.data=(dbuff.data<<num_of_bit)+code;		
 	}
 	else{			
-		puts("Tran des buff!");
-		return FAILED;
+		puts("Tran des buff!");		
 	}	
 }
 void efdb(){	
@@ -112,6 +102,11 @@ void efdb(){
 		dbuff.data &=~(FF<<dbuff.head);// xóa 8 bit đầu tiên của data về giá trị 0.				
 	}	
 }
+void vet(){//chuyen not cac bit con sot lai trong src buffer vao des buffer
+	dbuff.head+=sbuff.head;
+	dbuff.data=(dbuff.data<<sbuff.head)+sbuff.data;
+	sbuff.data>>=sbuff.head,sbuff.head=0;
+}
 void ma_hoa(rsa_params _rsa,char* fname){
 	memset(&sbuff,0,sizeof(buffer));
 	memset(&dbuff,0,sizeof(buffer));	
@@ -120,14 +115,17 @@ void ma_hoa(rsa_params _rsa,char* fname){
 	df=fopen("encode","wb");
 	
 	while(!feof(sf)){
-		if(itsb()==FAILED) break;
-		while((plain=efsb())<MAX_VAL){
+		itsb();
+		plain=efsb();
+		if(plain<MAX_VAL){
 			code=plain;//thuc hien viec ma hoa
-			if(itdb()==FAILED) break;
-			efdb();
-		}
-		//export_from_des_buffer();			
+			itdb();		
+		}		
+		efdb();			
 	}
+	vet();
+	efdb();
+	
 	fclose(sf);
 	fclose(df);
 }
