@@ -68,6 +68,7 @@ unsigned int rsa_decode(int y,rsa_params _rsa){
 extern buffer sbuff,dbuff;//sbuff là buffer của file nguồn,dbuff là buffer của file đích.
 extern int num_of_bit;// số lượng bit của mỗi khối sẽ đem đi mã hóa bằng RSA.
 extern FILE *sf,*df;
+extern char *sf2,*df2;
 extern unsigned int plain,code;
 
 void src_buff_enqueue(){// hàm này thực hiện đọc dữ liệu từ file rồi chèn nó vào sau src buffer-data.
@@ -79,6 +80,19 @@ void src_buff_enqueue(){// hàm này thực hiện đọc dữ liệu từ file 
 		}
 		else{
 			puts("File het du lieu.");
+			break;				
+		}
+	}	
+}
+void src_buff_enqueue2(){// hàm này thực hiện đọc dữ liệu từ string rồi chèn nó vào sau src buffer-data.
+	unsigned char c;
+	while(sbuff.head<num_of_bit && sbuff.head+BYTE_LEN < BUFFER_LEN && *sf2 ){		
+		if((c=*sf2++)>0){
+			sbuff.head+=sizeof(char)<<3;
+			sbuff.data=(sbuff.data<<BYTE_LEN)|c;			
+		}
+		else{
+			puts("Xau het du lieu.");
 			break;				
 		}
 	}	
@@ -108,6 +122,14 @@ void des_buff_dequeue(){
 		dbuff.data &=~(FF<<dbuff.head);// xóa 8 bit đầu tiên của data về giá trị 0.				
 	}	
 }
+void des_buff_dequeue2(){	
+	unsigned char c;	
+	while(dbuff.head>=BYTE_LEN){		
+		c= dbuff.data>> (dbuff.head= dbuff.head-BYTE_LEN);// c có giá trị bằng (num_of_bit) đầu tiên của data.		
+		*df2++=c;		
+		dbuff.data &=~(FF<<dbuff.head);// xóa 8 bit đầu tiên của data về giá trị 0.				
+	}	
+}
 void quet_sach(){//chuyển nốt các bit còn sót trong src buffer vào des buffer
 	if(sbuff.head>0){
 		dbuff.head+=sbuff.head;
@@ -115,6 +137,14 @@ void quet_sach(){//chuyển nốt các bit còn sót trong src buffer vào des b
 		sbuff.data>>=sbuff.head,sbuff.head=0;		
 	}
 	des_buff_dequeue();	
+}
+void quet_sach2(){//chuyển nốt các bit còn sót trong src buffer vào des buffer
+	if(sbuff.head>0){
+		dbuff.head+=sbuff.head;
+		dbuff.data=(dbuff.data<<sbuff.head)|sbuff.data;
+		sbuff.data>>=sbuff.head,sbuff.head=0;		
+	}
+	des_buff_dequeue2();	
 }
 void ma_hoa(rsa_params _rsa,char* fname){
 	memset(&sbuff,0,sizeof(buffer));
@@ -155,4 +185,42 @@ void giai_ma(rsa_params _rsa,char* fname){
 	quet_sach();
 	fclose(sf);
 	fclose(df);
+}
+void ma_hoa2(rsa_params _rsa,char* src,char* des){
+	memset(&sbuff,0,sizeof(buffer));
+	memset(&dbuff,0,sizeof(buffer));	
+	num_of_bit=_rsa.u;	
+	sf2=src;	
+	df2=des;	
+	while(*sf2!='\0'){
+		src_buff_enqueue2();
+		plain=src_buff_dequeue();
+		if(plain<MAX_VAL){					
+			code=rsa_encode(plain,_rsa);//thuc hien viec ma hoa
+			while(code>(2<<(num_of_bit-1))) code=rsa_encode(code,_rsa);//chong tran bit sau luy thua			
+			des_buff_enqueue(code);		
+		}		
+		des_buff_dequeue2();			
+	}
+	quet_sach2();
+	*sf2=*df2='\0';	
+}
+void giai_ma2(rsa_params _rsa,char* src,char* des){
+	memset(&sbuff,0,sizeof(buffer));
+	memset(&dbuff,0,sizeof(buffer));	
+	num_of_bit=_rsa.u;	
+	sf2=src;
+	df2=des;	
+	while(*sf2){
+		src_buff_enqueue2();
+		code=src_buff_dequeue();
+		if(code<MAX_VAL){			
+			plain=rsa_decode(code,_rsa);//thuc hien viec giai ma
+			while(plain>(2<<(num_of_bit-1))) plain=rsa_decode(plain,_rsa);//chong tran bit sau luy thua			
+			des_buff_enqueue(plain);		
+		}		
+		des_buff_dequeue2();			
+	}
+	quet_sach2();
+	*sf2=*df2='\0';
 }

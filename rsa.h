@@ -9,6 +9,7 @@ Tham khảo sách "Giáo trình cơ sở an toàn thông tin" thầy Nguyễn Kh
 #define SUCCESS 1
 #define FAILED 0
 #define FF 511// 8 bit 1 lien tiep
+#define BUFF_SIZE 1000
 
 /*
 Việc mã hóa RSA thực hiện trên khối bit chứ không phải theo byte nên ta phải xây dựng 2 bộ đệm tương ứng cho 2 thao tác:
@@ -22,6 +23,7 @@ typedef struct{
 buffer sbuff,dbuff;//sbuff là buffer của file nguồn,dbuff là buffer của file đích.
 int num_of_bit;// số lượng bit của mỗi khối sẽ đem đi mã hóa bằng RSA.
 FILE *sf,*df;
+char *sf2,*df2;
 unsigned int plain,code;
 
 typedef struct{
@@ -49,5 +51,8 @@ unsigned int rsa_decode(int y,rsa_params _rsa);// giải mã một số y thành
 //------------------------------------
 void ma_hoa(rsa_params _rsa,char* file_name);// mã hóa một file theo thuật RSA.
 void giai_ma(rsa_params _rsa,char* file_name);// giải mã một file đã dc mã hóa RSA.
+//--------------------------------------------
+void ma_hoa2(rsa_params _rsa,char* src,char* des);// mã hóa một xau theo thuật RSA.
+void giai_ma2(rsa_params _rsa,char* src,char* des);// giải mã một xau đã dc mã hóa RSA.
 //--------------------------------------------
 #endif //_RSA_H
